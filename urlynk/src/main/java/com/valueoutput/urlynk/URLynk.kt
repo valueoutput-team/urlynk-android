@@ -23,7 +23,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 object URLynk {
     private var appId: String? = null
     private var apiKey: String? = null
-    private var deviceId: String? = null
+    private var userAgent: String? = null
     private var screenWidth: Float? = null
     private var screenHeight: Float? = null
     private var initialLink: String? = null
@@ -58,13 +58,14 @@ object URLynk {
     fun configure(context: Context, appId: String, apiKey: String) {
         this.appId = appId
         this.apiKey = apiKey
-        deviceId = getHashedDeviceId(context)
+        val applicationId = context.packageName
+        val deviceId = getHashedDeviceId(context)
+        userAgent = "Android; $applicationId; $deviceId"
 
         val metrics = context.resources.displayMetrics
         devicePixelRatio = metrics.density
         screenWidth = metrics.widthPixels / metrics.density
         screenHeight = metrics.heightPixels / metrics.density
-
 
         if (initialLink != null) getLinkData(initialLink!!)
         else searchClick()
@@ -104,7 +105,7 @@ object URLynk {
             .url("$BASE_URL/links")
             .post(payload.toString().toRequestBody("application/json".toMediaType()))
             .addHeader("x-api-key", apiKey!!)
-            .addHeader("x-device-id", deviceId!!)
+            .addHeader("user-agent", userAgent!!)
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -164,7 +165,7 @@ object URLynk {
             .url("$BASE_URL/links")
             .post(payload.toString().toRequestBody("application/json".toMediaType()))
             .addHeader("x-api-key", apiKey!!)
-            .addHeader("x-device-id", deviceId!!)
+            .addHeader("user-agent", userAgent!!)
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -221,8 +222,7 @@ object URLynk {
             .url("$BASE_URL/clicks/find")
             .post(payload.toString().toRequestBody("application/json".toMediaType()))
             .addHeader("x-api-key", apiKey!!)
-            .addHeader("x-device-id", deviceId!!)
-            .addHeader("user-agent", "android")
+            .addHeader("user-agent", userAgent!!)
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -261,7 +261,7 @@ object URLynk {
             .url("$BASE_URL/links/${params[0]}/${params[1]}")
             .get()
             .addHeader("x-api-key", apiKey!!)
-            .addHeader("x-device-id", deviceId!!)
+            .addHeader("user-agent", userAgent!!)
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -300,7 +300,7 @@ object URLynk {
             .url("$BASE_URL/logs")
             .post(body)
             .addHeader("x-api-key", apiKey!!)
-            .addHeader("x-device-id", deviceId!!)
+            .addHeader("user-agent", userAgent!!)
             .build()
 
         client.newCall(request).enqueue(object : Callback {
