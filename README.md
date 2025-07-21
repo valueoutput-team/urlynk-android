@@ -1,4 +1,3 @@
-
 # URLynk Android SDK
 
 A lightweight Android library to create and handle **deferred deep links** with instant routing. If the app is installed, it opens directly. If not, the user is redirected to the Play Store and the link context is preserved after installation.
@@ -44,7 +43,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.github.valueoutput-team:urlynk-android:1.0.0")
+    implementation("com.github.valueoutput-team:urlynk-android:1.0.1")
 }
 ```
 
