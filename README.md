@@ -43,7 +43,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.github.valueoutput-team:urlynk-android:1.0.1")
+    implementation("com.github.valueoutput-team:urlynk-android:1.0.2")
 }
 ```
 
@@ -61,8 +61,9 @@ dependencies {
         <action android:name="android.intent.action.VIEW" />
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.BROWSABLE" />
-        <data android:scheme="https" android:host="urlynk.in" android:pathPrefix="/<app_id>/" />
-        <data android:scheme="http" android:host="urlynk.in" android:pathPrefix="/<app_id>/" />
+        <data android:scheme="http" android:host="urlynk.in" android:pathPrefix="/<YOUR_APP_ID>/" />
+        <data android:scheme="https" android:host="urlynk.in" android:pathPrefix="/<YOUR_APP_ID>/" />
+
         <!-- Optional: Branded domain support -->
         <!-- <data android:scheme="https" android:host="your.domain.com" android:pathPrefix="/<app_id>/" /> -->
     </intent-filter>
