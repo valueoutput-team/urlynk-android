@@ -6,6 +6,7 @@ import android.net.Uri
 import okhttp3.Request
 import okhttp3.Callback
 import okhttp3.Response
+import android.os.Build
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
@@ -13,34 +14,42 @@ import okhttp3.OkHttpClient
 import android.content.Intent
 import android.content.Context
 import android.provider.Settings
+import android.view.WindowManager
 import java.security.MessageDigest
 import androidx.lifecycle.LiveData
+import android.util.DisplayMetrics
 import android.annotation.SuppressLint
 import androidx.lifecycle.MutableLiveData
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 
 object URLynk {
-    private var appId: String? = null
-    private var apiKey: String? = null
+    private var screenWidth: Int? = null
+    private var screenHeight: Int? = null
     private var userAgent: String? = null
-    private var screenWidth: Float? = null
-    private var screenHeight: Float? = null
     private var initialLink: String? = null
-    private var devicePixelRatio: Float? = null
+    private var devicePixelRatio: Int? = null
+    @Volatile private var appId: String? = null
+    @Volatile private var apiKey: String? = null
+    private var baseURL = "https://api-xn4bb66p3a-uc.a.run.app/v4"
+
+    private const val VERSION = "1.1.0"
+    private const val CONFIG_ERR = "Service not configured. Call configure() before using this method."
 
     private val client = OkHttpClient()
-    private val linkData = MutableLiveData<String>()
-    private const val BASE_URL = "https://api-xn4bb66p3a-uc.a.run.app/v4"
+    private val linkData = MutableLiveData<Pair<String, String>>()
+    val onLinkData: LiveData<Pair<String, String>> = linkData
 
-    val onLinkData: LiveData<String> = linkData
+    /** -----------------------
+     *  Public Methods
+     *  ----------------------- */
 
     /**
      * Handles the initial or incoming deep link that opened the app.
      *
      * Call this method from your activity’s `onCreate()` and `onNewIntent()` methods.
      * It should be called before [configure], especially if you're fetching the API key from your server,
-     * as it stores the link temporarily and processes it after initialization is complete.
+     * as it stores the link temporarily and processes it after configuration is completed.
      *
      * Internally, it extracts the link from the intent and triggers link data retrieval.
      */
@@ -56,19 +65,15 @@ object URLynk {
      * @param apiKey Your API key from URLynk
      */
     fun configure(context: Context, appId: String, apiKey: String) {
-        this.appId = appId
-        this.apiKey = apiKey
-        val applicationId = context.packageName
-        val deviceId = getHashedDeviceId(context)
-        userAgent = "Android; $applicationId; $deviceId"
-
-        val metrics = context.resources.displayMetrics
-        devicePixelRatio = metrics.density
-        screenWidth = metrics.widthPixels / metrics.density
-        screenHeight = metrics.heightPixels / metrics.density
-
-        if (initialLink != null) getLinkData(initialLink!!)
-        else searchClick()
+        synchronized(this) {
+            this.appId = appId
+            this.apiKey = apiKey
+        }
+        userAgent = "Android; ${context.packageName}; ${getHashedDeviceId(context)}; $VERSION"
+        setScreenMetrics(context)
+        fetchBaseURL {
+            initialLink?.let { getLinkData(it) } ?: searchClick()
+        }
     }
 
     /**
@@ -79,65 +84,23 @@ object URLynk {
      *
      * The service must be initialized by calling [configure] before using this method.
      *
-     * @param url The original URL to be shortened.
-     * @param domain Optional branded domain (must be verified in your URLynk account).
-     * @param onRes Callback that receives the shortened URL, or null if the request fails.
+     * @param data Link data
+     * @param onRes Callback that receives the shortened URL result
      */
-    fun createShortLink(url: String, domain: String?, onRes: (String?) -> Unit) {
-        if (this.apiKey == null) throw Exception("Service not configured. Call configure() before using this method.")
+    fun createShortLink(data: LinkModel, onRes: (Result<String>) -> Unit) {
+        if (appId == null || apiKey == null) return onRes(Result.failure(IllegalStateException(CONFIG_ERR)))
 
-        // Validate URL format
-        val uri = try { Uri.parse(url) } catch (e: Exception) { null }
-        if (uri == null || uri.scheme.isNullOrEmpty() || uri.host.isNullOrEmpty()) {
-            throw IllegalArgumentException("Invalid URL")
-        }
+        val err = data.validate()
+        if(err != null) return onRes(Result.failure(IllegalArgumentException(err)))
 
-        if (domain != null && !domain.matches(Regex("^[a-zA-Z0-9.-]+\$"))) {
-            throw IllegalArgumentException("Invalid domain format")
-        }
+        val payload = JSONObject(data.toJson())
 
-        val payload = JSONObject().apply {
-            put("data", url)
-            if (domain != null) put("domain", domain)
-        }
-
-        val request = Request.Builder()
-            .url("$BASE_URL/links")
-            .post(payload.toString().toRequestBody("application/json".toMediaType()))
-            .addHeader("x-api-key", apiKey!!)
-            .addHeader("user-agent", userAgent!!)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                logError(e)
-                onRes(null)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    val bodyStr = response.body?.string()
-                    if (!response.isSuccessful || bodyStr == null) {
-                        onRes(null)
-                        return
-                    }
-                    try {
-                        val json = JSONObject(bodyStr)
-                        val urlOb = json.getJSONObject("data")
-                            .getJSONObject("link")
-                            .getJSONObject("url")
-
-                        var url = urlOb.optString("custom")
-                        if(url.isNullOrEmpty() || url == "null") url = urlOb.getString("default")
-
-                        onRes(url)
-                    } catch (e: Exception) {
-                        logError(e)
-                        onRes(null)
-                    }
-                }
-            }
-        })
+        sendRequest("$baseURL/links", payload, onSuccess = { data ->
+            val urlOb = data.getJSONObject("link").getJSONObject("url")
+            val shortUrl = urlOb.optString("custom").takeIf { it.isNotBlank() && it != "null" }
+                ?: urlOb.optString("default")
+            onRes(Result.success(shortUrl))
+        }, onFailure = {msg -> onRes(Result.failure(Exception(msg))) })
     }
 
     /**
@@ -146,70 +109,35 @@ object URLynk {
      * The service must be initialized by calling [configure] before using this method.
      *
      * @param data Any string payload to encode in the link
-     * @param onRes Callback that receives the resulting deep link or null on failure
+     * @param onRes Callback that receives the resulting deep link
      */
-    fun createDeepLink(data: String, onRes: (String?) -> Unit) {
-        if (this.appId == null || this.apiKey == null) {
-            throw Exception("Service not configured. Call configure() before using this method.")
-        }
-        if (data.trim().isEmpty()) {
-            throw IllegalArgumentException("Data is required")
-        }
+    fun createDeepLink(data: String, onRes: (Result<String>) -> Unit) {
+        if (appId == null || apiKey == null) return onRes(Result.failure(IllegalStateException(CONFIG_ERR)))
+        if (data.isBlank()) return onRes(Result.failure(IllegalArgumentException("Data must not be empty")))
 
         val payload = JSONObject().apply {
             put("appId", appId)
             put("data", data.trim())
         }
 
-        val request = Request.Builder()
-            .url("$BASE_URL/links")
-            .post(payload.toString().toRequestBody("application/json".toMediaType()))
-            .addHeader("x-api-key", apiKey!!)
-            .addHeader("user-agent", userAgent!!)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                logError(e)
-                onRes(null)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    val bodyStr = response.body?.string()
-                    if (!response.isSuccessful || bodyStr == null) {
-                        onRes(null)
-                        return
-                    }
-                    try {
-                        val json = JSONObject(bodyStr)
-                        val urlOb = json.getJSONObject("data")
-                            .getJSONObject("link")
-                            .getJSONObject("url")
-
-                        var url = urlOb.optString("custom")
-                        if(url.isNullOrEmpty() || url == "null") url = urlOb.getString("default")
-
-                        onRes(url)
-                    } catch (e: Exception) {
-                        logError(e)
-                        onRes(null)
-                    }
-                }
-            }
+        sendRequest("$baseURL/links", payload, onSuccess = { data ->
+            val urlOb = data.getJSONObject("link").getJSONObject("url")
+            val link = urlOb.optString("custom").takeIf { it.isNotBlank() && it != "null" }
+                ?: urlOb.optString("default")
+            onRes(Result.success(link))
+        }, onFailure = { err ->
+            onRes(Result.failure(Exception(err)))
         })
     }
 
     /**
      * Looks up for any recent deep link click associated with this device within the last 24 hours.
      * Auto-invoked if a deferred link is detected. Can also be called manually.
-     * If a matching click is found, its associated data will be posted to [onLinkData].
+     * If a matching click is found, its associated link & data will be posted to [onLinkData].
      * The service must be initialized by calling [configure] before using this method.
      */
     fun searchClick() {
-        if (this.appId == null || this.apiKey == null) {
-            throw Exception("Service not configured. Call configure() before using this method.")
-        }
+        if (appId == null || apiKey == null) throw IllegalStateException(CONFIG_ERR)
 
         val payload = JSONObject().apply {
             put("appId", appId)
@@ -218,95 +146,114 @@ object URLynk {
             put("devicePixelRatio", devicePixelRatio)
         }
 
-        val request = Request.Builder()
-            .url("$BASE_URL/clicks/find")
-            .post(payload.toString().toRequestBody("application/json".toMediaType()))
-            .addHeader("x-api-key", apiKey!!)
-            .addHeader("user-agent", userAgent!!)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                logError(e)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    val bodyStr = response.body?.string()
-                    if (!response.isSuccessful || bodyStr == null) {
-                        return
-                    }
-                    try {
-                        val json = JSONObject(bodyStr)
-                        val data = json.getJSONObject("data").getString("data")
-                        linkData.postValue(data)
-                    } catch (e: Exception) {
-                        logError(e)
-                    }
-                }
-            }
+        sendRequest("$baseURL/clicks/find", payload, onSuccess = { data ->
+            linkData.postValue(Pair(data.getString("link"), data.getString("data")))
         })
     }
 
+    /** -----------------------
+     *  Private Helpers
+     *  ----------------------- */
+
+    private fun fetchBaseURL(onComplete: () -> Unit) {
+        sendRequest("$baseURL/urls", null, onSuccess = { data ->
+            baseURL = data.optString("baseURL", baseURL)
+            onComplete()
+        }, onFailure = { onComplete() }, method = "GET")
+    }
+
     private fun getLinkData(link: String) {
-        if (this.appId == null || this.apiKey == null) {
+        if (appId == null || apiKey == null) {
             initialLink = link
             return
         }
+        val params = runCatching { Uri.parse(link).pathSegments }.getOrNull()
+        if (params?.size != 2) return
 
-        val params = try { Uri.parse(link).pathSegments } catch (e: Exception) { null }
-        if (params == null || params.size != 2) return
-
-        val request = Request.Builder()
-            .url("$BASE_URL/links/${params[0]}/${params[1]}")
-            .get()
-            .addHeader("x-api-key", apiKey!!)
-            .addHeader("user-agent", userAgent!!)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) = logError(e)
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    val bodyStr = response.body?.string()
-                    if (!response.isSuccessful || bodyStr == null) return
-
-                    try {
-                        val json = JSONObject(bodyStr)
-                        val data = json.getJSONObject("data").getString("linkData")
-                        linkData.postValue(data)
-                        initialLink = null
-                    } catch (e: Exception) {
-                        logError(e)
-                    }
-                }
-            }
+        sendRequest("$baseURL/links/${params[0]}/${params[1]}", null, onSuccess = { data ->
+            val d = data.getString("linkData")
+            linkData.postValue(Pair(link, d))
+            initialLink = null
         })
     }
 
     private fun logError(e: Exception) {
         val log = JSONObject().apply {
             put("level", 1)
-            put("version", "1.0.0")
             put("time", Date().time)
-            put("message", e.message)
             put("stackTrace", e.stackTraceToString())
+            put("message", e.message ?: "Unknown error")
         }
-        val logs = JSONArray().put(log)
-        val data = JSONObject().put("data", logs)
-        val body = data.toString().toRequestBody("application/json".toMediaType())
+        sendRequest("$baseURL/logs", JSONObject().put("data", JSONArray().put(log)), {}, {}, "POST", true)
+    }
 
-        val request = Request.Builder()
-            .url("$BASE_URL/logs")
-            .post(body)
-            .addHeader("x-api-key", apiKey!!)
-            .addHeader("user-agent", userAgent!!)
-            .build()
+    private fun sendRequest(
+        url: String,
+        jsonPayload: JSONObject?,
+        onSuccess: (JSONObject) -> Unit,
+        onFailure: (String?) -> Unit = {},
+        method: String = "POST",
+        fromLogs: Boolean = false,
+    ) {
+        val requestBuilder = Request.Builder()
+            .url(url)
+            .addHeader("x-api-key", apiKey ?: "")
+            .addHeader("user-agent", userAgent ?: "")
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {}
-            override fun onResponse(call: Call, response: Response) {}
+        if (method == "POST" && jsonPayload != null) {
+            requestBuilder.post(jsonPayload.toString().toRequestBody("application/json".toMediaType()))
+        } else if (method == "GET") {
+            requestBuilder.get()
+        }
+
+        client.newCall(requestBuilder.build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                if(!fromLogs) logError(e)
+                onFailure(e.message)
+            }
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    try {
+                        val bodyStr = it.body?.string()
+                        if(bodyStr.isNullOrEmpty()) {
+                            onFailure(null)
+                            return
+                        }
+
+                        val json = JSONObject(bodyStr)
+                        if (!it.isSuccessful) {
+                            val msg  = json.optString("message")
+                            onFailure(msg)
+                            return
+                        }
+
+                        val ob = json.getJSONObject("data")
+                        onSuccess(ob)
+                    } catch (e: Exception) {
+                        if(!fromLogs) logError(e)
+                        onFailure(e.message)
+                    }
+                }
+            }
         })
+    }
+
+    private fun setScreenMetrics(context: Context) {
+        val metrics = DisplayMetrics()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val windowMetrics = context.getSystemService(WindowManager::class.java).currentWindowMetrics
+            screenWidth = windowMetrics.bounds.width()
+            screenHeight = windowMetrics.bounds.height()
+            devicePixelRatio = context.resources.displayMetrics.densityDpi
+        } else {
+            @Suppress("DEPRECATION")
+            val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            @Suppress("DEPRECATION")
+            wm.defaultDisplay.getRealMetrics(metrics)
+            screenWidth = metrics.widthPixels
+            screenHeight = metrics.heightPixels
+            devicePixelRatio = metrics.densityDpi
+        }
     }
 
     @SuppressLint("HardwareIds")

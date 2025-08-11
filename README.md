@@ -1,6 +1,6 @@
 # URLynk Android SDK
 
-A lightweight Android library to create and handle **deferred deep links** with instant routing. If the app is installed, it opens directly. If not, the user is redirected to the Play Store and the link context is preserved after installation.
+A lightweight Android library for URL shortening, and to create and handle **deferred deep links** with instant routing. If the app is installed, it opens directly. If not, the user is redirected to the Play Store and the link context is preserved after installation.
 
 ---
 
@@ -43,7 +43,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.github.valueoutput-team:urlynk-android:1.0.2")
+    implementation("com.github.valueoutput-team:urlynk-android:1.1.0")
 }
 ```
 
@@ -65,7 +65,7 @@ dependencies {
         <data android:scheme="https" android:host="urlynk.in" android:pathPrefix="/<YOUR_APP_ID>/" />
 
         <!-- Optional: Branded domain support -->
-        <!-- <data android:scheme="https" android:host="your.domain.com" android:pathPrefix="/<app_id>/" /> -->
+        <!-- <data android:scheme="https" android:host="your.domain.com" android:pathPrefix="/<YOUR_APP_ID>/" /> -->
     </intent-filter>
 </activity>
 ```
@@ -95,19 +95,20 @@ URLynk.onLinkData.observe(this) { data ->
 ### 3. Create a deep link
 
 ```kotlin
-URLynk.createDeepLink("your-data") { link ->
-    Log.d("[URLynk]", "Deep Link: $link")
+URLynk.createDeepLink(json.toString()) { res ->
+    res.onSuccess { link -> Log.d("[URLynk]", "Generated Deep Link: $link") }
+    res.onFailure { e -> Log.e("[URLynk]", e.message ?: "Deep Link error") }
 }
 ```
 
 ### 4. Create a short link
 
 ```kotlin
-URLynk.createShortLink(
-    url = "https://example.com/your-page",
-    domain = "your.branded.domain"
-) { link ->
-    Log.d("[URLynk]", "Shortened Link: $link")
+URLynk.createShortLink(LinkModel(
+    url = "https://www.google.com/search?q=urlynk&sca_esv=609c72437aa85e53&sxsrf=AE3TifPffGhN1WGe74VkK0U1vDQRC9ff9A%3A1754933677002",
+)) { res ->
+    res.onSuccess { link -> Log.d("MainActivity", "Generated Short Link: $link") }
+    res.onFailure { e -> Log.e("MainActivity", e.message ?: "Short Link error") }
 }
 ```
 
