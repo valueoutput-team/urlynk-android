@@ -110,7 +110,7 @@ URLynk.createShortLink(LinkModel(
 To test deep links on the emulator:
 
 ```bash
-adb shell am start -a android.intent.action.VIEW -d "<created_deep_link>" <your.application.id>
+adb shell am start -a android.intent.action.VIEW -d "GENERATED_DEEP_LINK" YOUR_APPLICATION_ID_[NOT_APP_ID]
 ```
 
 You should see the app launch and `URLynk.onLinkData` receive the payload.
