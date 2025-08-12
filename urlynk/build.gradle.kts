@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.valueoutput"
-version = "1.1.0"
+version = "1.2.0"
 
 android {
     namespace = "com.valueoutput.urlynk"
@@ -14,8 +14,6 @@ android {
 
     defaultConfig {
         minSdk = 21
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
 
@@ -98,14 +96,7 @@ signing {
 }
 
 dependencies {
-
-    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
 

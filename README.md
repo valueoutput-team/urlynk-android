@@ -27,7 +27,7 @@ A lightweight Android library for URL shortening and deep links - open the app d
 ```kotlin
 dependencies {
     // Add this dependency
-    implementation("com.valueoutput:urlynk:1.1.0")
+    implementation("com.valueoutput:urlynk:1.2.0")
 }
 ```
 
@@ -114,9 +114,3 @@ adb shell am start -a android.intent.action.VIEW -d "<created_deep_link>" <your.
 ```
 
 You should see the app launch and `URLynk.onLinkData` receive the payload.
-
----
-
-## License
-
-BSD-3-Clause License — see [`LICENSE`](./LICENSE) for details.
