@@ -51,12 +51,15 @@ dependencies {
 
 ## AndroidManifest Setup
 
+Add the following `intent-filter` inside your **.MainActivity** `<activity>` tag.
+
 ```xml
 <activity
     android:name=".MainActivity"
     android:launchMode="singleTop"
     android:exported="true">
 
+    <!-- Add this intent-filter -->
     <intent-filter android:autoVerify="true">
         <action android:name="android.intent.action.VIEW" />
         <category android:name="android.intent.category.DEFAULT" />
