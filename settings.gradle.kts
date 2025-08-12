@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "URLynk Demo"
+rootProject.name = "com.valueoutput"
 include(":app")
 include(":urlynk")

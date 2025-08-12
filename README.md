@@ -1,6 +1,6 @@
 # URLynk Android SDK
 
-A lightweight Android library for URL shortening, and to create and handle **deferred deep links** with instant routing. If the app is installed, it opens directly. If not, the user is redirected to the Play Store and the link context is preserved after installation.
+A lightweight Android library for URL shortening and deep links - open the app directly if it's installed, otherwise redirect to the Play Store for download and preserve the link through installation.
 
 ---
 
@@ -15,35 +15,19 @@ A lightweight Android library for URL shortening, and to create and handle **def
 
 ## Features
 
-- Capture initial and subsequent deep links
-- Handle deferred deep links across installs
-- Create short or branded deep links
-- Access deep link data via LiveData
-- Simple integration with Jetpack Compose or XML-based apps
+- URL shortener with smart routing
+- Capture both initial and subsequent deep links
+- Direct new users to download the app while preserving links across installs
+- Use your own domain to create branded links
 
 ---
 
-## Installation (via JitPack)
-
-### Step 1: Add the JitPack repository
-
-In `settings.gradle.kts` (or project-level `build.gradle`):
-
-```kotlin
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-        maven(url = "https://jitpack.io")
-    }
-}
-```
-
-### Step 2: Add the dependency
+## Installation (via Maven Central)
 
 ```kotlin
 dependencies {
-    implementation("com.github.valueoutput-team:urlynk-android:latest")
+    // Add this dependency
+    implementation("com.valueoutput:urlynk:1.1.0")
 }
 ```
 
