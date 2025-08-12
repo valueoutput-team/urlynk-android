@@ -35,7 +35,13 @@ dependencies {
 
 ## AndroidManifest Setup
 
-Add the following `intent-filter` inside your **.MainActivity** `<activity>` tag.
+### Add internet permission
+
+```xml
+<uses-permission android:name="android.permission.INTERNET"/>
+```
+
+### Add the following `intent-filter` inside **.MainActivity** `<activity>` tag.
 
 ```xml
 <activity
