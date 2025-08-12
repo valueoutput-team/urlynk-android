@@ -70,7 +70,7 @@ Add the following `intent-filter` inside your **.MainActivity** `<activity>` tag
 URLynk.handleDeepLink(intent)
 
 // Then configure with your credentials
-URLynk.configure(context, appId = "YOUR_APP_ID", apiKey = "YOUR_API_KEY")
+URLynk.configure(this, appId = "YOUR_APP_ID", apiKey = "YOUR_API_KEY")
 ```
 
 ### 2. Observe link data
