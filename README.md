@@ -4,7 +4,7 @@ A lightweight Android library for URL shortening, and to create and handle **def
 
 ---
 
-## 🧰 Setup Instructions
+## Setup Instructions
 
 1. Visit [URLynk](https://app.urlynk.in)
 2. Create a free account
@@ -13,7 +13,7 @@ A lightweight Android library for URL shortening, and to create and handle **def
 
 ---
 
-## 🚀 Features
+## Features
 
 - Capture initial and subsequent deep links
 - Handle deferred deep links across installs
@@ -23,7 +23,7 @@ A lightweight Android library for URL shortening, and to create and handle **def
 
 ---
 
-## 🛠️ Installation (via JitPack)
+## Installation (via JitPack)
 
 ### Step 1: Add the JitPack repository
 
@@ -43,13 +43,13 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.github.valueoutput-team:urlynk-android:1.1.0")
+    implementation("com.github.valueoutput-team:urlynk-android:latest")
 }
 ```
 
 ---
 
-## 📱 AndroidManifest Setup
+## AndroidManifest Setup
 
 ```xml
 <activity
@@ -70,9 +70,11 @@ dependencies {
 </activity>
 ```
 
+> **Note:** `YOUR_APP_ID` refers to the App ID generated in your URLynk account and **not** the Android `applicationId`.
+
 ---
 
-## 🔧 Usage
+## Usage
 
 ### 1. Initialize the SDK
 
@@ -88,7 +90,7 @@ URLynk.configure(context, appId = "YOUR_APP_ID", apiKey = "YOUR_API_KEY")
 
 ```kotlin
 URLynk.onLinkData.observe(this) { data ->
-    Log.d("[URLynk]", "Received link data: $data")
+    Log.d("[URLynk]", "Received deep link: \"${data.first}\" with data: \"${data.second}\"")
 }
 ```
 
@@ -112,11 +114,11 @@ URLynk.createShortLink(LinkModel(
 }
 ```
 
-Check out a complete Jetpack Compose example in the [demo app](./app/src/main/java/com/valueoutput/urlynk_demo/MainActivity.kt).
+> **Note:** Check out a complete Jetpack Compose example [here](./app/src/main/java/com/valueoutput/urlynk_demo/MainActivity.kt).
 
 ---
 
-## 🧪 Emulator Testing
+## Emulator Testing
 
 To test deep links on the emulator:
 
@@ -128,6 +130,6 @@ You should see the app launch and `URLynk.onLinkData` receive the payload.
 
 ---
 
-## 📄 License
+## License
 
 BSD-3-Clause License — see [`LICENSE`](./LICENSE) for details.
