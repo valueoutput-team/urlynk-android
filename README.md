@@ -40,7 +40,7 @@ A lightweight Android library for URL shortening and deep links - open the app d
 >    implementation("com.github.valueoutput-team:urlynk-android:1.0.2")
 >
 >    // New [Add this]:
->    implementation("com.valueoutput:urlynk:1.2.0")
+>    implementation("com.valueoutput:urlynk:1.2.1")
 >    ```
 >
 > **Maven Central coordinates:**  
@@ -51,7 +51,7 @@ A lightweight Android library for URL shortening and deep links - open the app d
 ```kotlin
 dependencies {
     // Add this dependency
-    implementation("com.valueoutput:urlynk:1.2.0")
+    implementation("com.valueoutput:urlynk:1.2.1")
 }
 ```
 

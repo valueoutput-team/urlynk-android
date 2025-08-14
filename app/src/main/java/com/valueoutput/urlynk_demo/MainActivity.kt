@@ -87,7 +87,7 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 //                    domain = "urlynk.in",
 //                    password = "Test@123",
 //                    startTime = System.currentTimeMillis() + 60 * 60 * 1000,
-//                    callbackURL = "https://app.urlynk.in",
+//                    webhookURL = "https://your.domain.com/webhook",
 //                    expiry = listOf(
 //                        ExpiryModel(type = ExpiryType.CLICK_BASED, value = 100),
 //                        ExpiryModel(type = ExpiryType.TIME_BASED, value = System.currentTimeMillis() + 25 * 60 * 60 * 1000)

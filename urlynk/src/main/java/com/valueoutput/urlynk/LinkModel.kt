@@ -7,10 +7,9 @@ import java.util.*
  */
 data class LinkModel(
     /**
-     * The unique link identifier to update.
+     * The unique link identifier to update. Send `null` when creating a new link.
      * Found at the end of the generated link, for example:
      * https://urlynk.in/<LINK_ID> or https://your.branded.domain/<LINK_ID>.
-     * Send `null` when creating a new link.
      */
     val id: String? = null,
 
@@ -30,10 +29,10 @@ data class LinkModel(
     val password: String? = null,
 
     /**
-     * Callback URL for receiving notifications or webhook events.
+     * Webhook URL for receiving click events.
      * Must be a valid, self-authorized HTTP/HTTPS POST endpoint.
      */
-    val callbackURL: String? = null,
+    val webhookURL: String? = null,
 
     /** List of expiry conditions for the link (click-based or time-based). */
     val expiry: List<ExpiryModel>? = null,
@@ -47,17 +46,17 @@ data class LinkModel(
     fun validate(): String? {
         val now = System.currentTimeMillis()
 
-        if (!url.isValidHttpUrl()) return "Data is an invalid URL"
-        if (startTime != null && startTime < now) return "Start time cannot be lesser than now"
+        if (!url.isValidHttpUrl()) return "Invalid URL"
+        if (startTime != null && startTime < now) return "Start time cannot be less than current time"
         if (domain != null && !domain.matches(Regex("^[a-zA-Z0-9.-]+$"))) return "Invalid domain"
-        if (callbackURL != null && !callbackURL.isValidHttpUrl()) return "Invalid callback URL"
+        if (webhookURL != null && !webhookURL.isValidHttpUrl()) return "Invalid webhook URL"
 
         expiry?.let {
             if (it.size > ExpiryType.entries.size) return "Max expiry size can be ${ExpiryType.entries.size}"
             for (e in it) {
                 when (e.type) {
                     ExpiryType.CLICK_BASED -> if (e.value <= 0) return "Expiry clicks must be greater than 0"
-                    ExpiryType.TIME_BASED -> if (e.value < now + 24 * 60 * 60 * 1000) return "Expiry time must be more than 24 hours from now"
+                    ExpiryType.TIME_BASED -> if (e.value < now + 24 * 60 * 60 * 1000) return "Expiry time must be more than 24 hours from current time"
                 }
             }
         }
@@ -65,15 +64,9 @@ data class LinkModel(
         restrictions?.let { r ->
             if (r.clicksPerDevice != null && r.clicksPerDevice <= 0) return "Clicks per device must be greater than 0"
 
-            if (r.os != null) {
-                if (r.os.size > OSType.entries.size) return "Max restrictions os size can be ${OSType.entries.size}"
-                if (hasDuplicates(r.os)) return "Restrictions os list contains duplicates"
-            }
+            if (r.os != null && hasDuplicates(r.os))  return "Restrictions os contains duplicates"
 
-            if (r.devices != null) {
-                if (r.devices.size > DeviceType.entries.size) return "Max restrictions device size can be ${DeviceType.entries.size}"
-                if (hasDuplicates(r.devices)) return "Restrictions device list contains duplicates"
-            }
+            if (r.devices != null && hasDuplicates(r.devices)) return "Restrictions devices contains duplicates"
 
             r.workingHrs?.forEach { (start, end) ->
                 if (start > end) return "Start hr cannot be greater than end hr: workingHrs"
@@ -106,37 +99,39 @@ data class LinkModel(
 
         smartRouting?.let { sr ->
             sr.osBased?.forEach { e ->
-                if (!e.url.isValidHttpUrl()) return "Data must be a valid URL: osBased smartRoutings"
-                if (e.targets.size > OSType.entries.size) return "Max smartRouting osBased target size can be ${OSType.entries.size}"
-                if (hasDuplicates(e.targets)) return "smartRouting osBased targets contain duplicates"
+                if (!e.url.isValidHttpUrl()) return "Invalid URL: osBased smartRouting"
+                if (e.targets.isEmpty()) return "Targets cannot be empty: osBased smartRouting"
+                if (hasDuplicates(e.targets)) return "Targets contain duplicates: osBased smartRouting"
             }
 
             sr.deviceBased?.forEach { e ->
-                if (!e.url.isValidHttpUrl()) return "Data must be a valid URL: deviceBased smartRoutings"
-                if (e.targets.size > DeviceType.entries.size) return "Max smartRouting deviceBased target size can be ${DeviceType.entries.size}"
-                if (hasDuplicates(e.targets)) return "smartRouting deviceBased targets contain duplicates"
+                if (!e.url.isValidHttpUrl()) return "Invalid URL: deviceBased smartRouting"
+                if (e.targets.isEmpty()) return "Targets cannot be empty: deviceBased smartRouting"
+                if (hasDuplicates(e.targets)) return "Targets contain duplicates: deviceBased smartRouting "
             }
 
             sr.timeBased?.forEach { e ->
-                if (!e.url.isValidHttpUrl()) return "Data must be a valid URL: timeBased smartRoutings"
+                if (!e.url.isValidHttpUrl()) return "Invalid URL: timeBased smartRouting"
+                if (e.targets.isEmpty()) return "Targets cannot be empty: timeBased smartRouting"
                 e.targets.forEach { (start, end) ->
-                    if (start > end) return "Start hr cannot be greater than end hr: timeBased smartRoutings"
-                    if (start !in 0..23) return "Start hr must be between 0 and 23: timeBased smartRoutings"
-                    if (end !in 0..23) return "End hr must be between 0 and 23: timeBased smartRoutings"
+                    if (start > end) return "Start hr cannot be greater than end hr: timeBased smartRouting"
+                    if (start !in 0..23) return "Start hr must be between 0 and 23: timeBased smartRouting"
+                    if (end !in 0..23) return "End hr must be between 0 and 23: timeBased smartRouting"
                 }
             }
 
             sr.locBased?.forEach { l ->
-                if (!l.url.isValidHttpUrl()) return "Data must be a valid URL: locBased smartRoutings"
+                if (!l.url.isValidHttpUrl()) return "Invalid URL: locBased smartRouting"
+                if (l.targets.isEmpty()) return "Targets cannot be empty: locBased smartRouting"
                 l.targets.forEach { e ->
-                    if(e.address.isBlank()) return "Address cannot be blank: locBased smartRoutings"
-                    if(e.boundingBox.size != 4) return "Bounding box size must be 4: locBased smartRoutings"
-                    if(e.boundingBox[0] !in -90.0..90.0) return "southLat must be between -90 and 90: locBased smartRoutings"
-                    if(e.boundingBox[1] !in -90.0..90.0) return "northLat must be between -90 and 90: locBased smartRoutings"
-                    if(e.boundingBox[2] !in -180.0..180.0) return "westLng must be between -180 and 180: locBased smartRoutings"
-                    if(e.boundingBox[3] !in -180.0..180.0) return "eastLng must be between -180 and 180: locBased smartRoutings"
-                    if(e.boundingBox[0] > e.boundingBox[1]) return "southLat cannot be greater than northLat: locBased smartRoutings"
-                    if(e.boundingBox[2] > e.boundingBox[3]) return "westLng cannot be greater than eastLng: locBased smartRoutings"
+                    if(e.address.isBlank()) return "Address cannot be blank: locBased smartRouting"
+                    if(e.boundingBox.size != 4) return "Bounding box size must be 4: locBased smartRouting"
+                    if(e.boundingBox[0] !in -90.0..90.0) return "southLat must be between -90 and 90: locBased smartRouting"
+                    if(e.boundingBox[1] !in -90.0..90.0) return "northLat must be between -90 and 90: locBased smartRouting"
+                    if(e.boundingBox[2] !in -180.0..180.0) return "westLng must be between -180 and 180: locBased smartRouting"
+                    if(e.boundingBox[3] !in -180.0..180.0) return "eastLng must be between -180 and 180: locBased smartRouting"
+                    if(e.boundingBox[0] > e.boundingBox[1]) return "southLat cannot be greater than northLat: locBased smartRouting"
+                    if(e.boundingBox[2] > e.boundingBox[3]) return "westLng cannot be greater than eastLng: locBased smartRouting"
                 }
             }
         }
@@ -156,7 +151,7 @@ data class LinkModel(
             "password" to password,
             "startTime" to startTime,
             "utcOffset" to utcOffset,
-            "callbackURL" to callbackURL,
+            "webhookURL" to webhookURL,
             "expiry" to expiry?.map { it.toJson() },
             "restrictions" to restrictions?.toJson(),
             "smartRouting" to smartRouting?.toJson()
@@ -183,7 +178,7 @@ data class ExpiryModel(
 }
 
 /**
- * Restrictions applied to a link.
+ * Restrictions applied to the link.
  */
 data class RestrictionModel(
     /** Allowed operating systems. Null means no OS restriction. */
@@ -205,6 +200,7 @@ data class RestrictionModel(
      * Allowed working hours, represented as a list of (startHour, endHour) pairs in 24-hour format.
      * - startHour is interpreted as startHour:00:00 (inclusive).
      * - endHour is interpreted as endHour:59:59 (inclusive).
+     * Null means 24 hours access.
      */
     val workingHrs: List<Pair<Int, Int>>? = null
 ) {
@@ -254,6 +250,9 @@ data class SmartRoutingModel(
  * Represents a location, including its address and geographic bounding boundaries.
  */
 data class LocModel(
+    /**
+     * Address
+     */
     val address: String,
 
     /**

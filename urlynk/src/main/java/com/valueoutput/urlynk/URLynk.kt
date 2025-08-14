@@ -33,7 +33,7 @@ object URLynk {
     @Volatile private var apiKey: String? = null
     private var baseURL = "https://api-xn4bb66p3a-uc.a.run.app/v4"
 
-    private const val VERSION = "1.1.0"
+    private const val VERSION = "1.2.1"
     private const val CONFIG_ERR = "Service not configured. Call configure() before using this method."
 
     private val client = OkHttpClient()
@@ -95,8 +95,8 @@ object URLynk {
 
         val payload = JSONObject(data.toJson())
 
-        sendRequest("$baseURL/links", payload, onSuccess = { data ->
-            val urlOb = data.getJSONObject("link").getJSONObject("url")
+        sendRequest("$baseURL/links", payload, onSuccess = { d ->
+            val urlOb = d.getJSONObject("link").getJSONObject("url")
             val shortUrl = urlOb.optString("custom").takeIf { it.isNotBlank() && it != "null" }
                 ?: urlOb.optString("default")
             onRes(Result.success(shortUrl))
@@ -120,8 +120,8 @@ object URLynk {
             put("data", data.trim())
         }
 
-        sendRequest("$baseURL/links", payload, onSuccess = { data ->
-            val urlOb = data.getJSONObject("link").getJSONObject("url")
+        sendRequest("$baseURL/links", payload, onSuccess = { d ->
+            val urlOb = d.getJSONObject("link").getJSONObject("url")
             val link = urlOb.optString("custom").takeIf { it.isNotBlank() && it != "null" }
                 ?: urlOb.optString("default")
             onRes(Result.success(link))
@@ -147,7 +147,7 @@ object URLynk {
         }
 
         sendRequest("$baseURL/clicks/find", payload, onSuccess = { data ->
-            linkData.postValue(Pair(data.getString("link"), data.getString("data")))
+            emitLinkData(data.getString("link"), data.getString("data"))
         })
     }
 
@@ -159,7 +159,7 @@ object URLynk {
         sendRequest("$baseURL/urls", null, onSuccess = { data ->
             baseURL = data.optString("baseURL", baseURL)
             onComplete()
-        }, onFailure = { onComplete() }, method = "GET")
+        }, onFailure = { onComplete() })
     }
 
     private fun getLinkData(link: String) {
@@ -172,7 +172,7 @@ object URLynk {
 
         sendRequest("$baseURL/links/${params[0]}/${params[1]}", null, onSuccess = { data ->
             val d = data.getString("linkData")
-            linkData.postValue(Pair(link, d))
+            emitLinkData(link, d)
             initialLink = null
         })
     }
@@ -184,7 +184,7 @@ object URLynk {
             put("stackTrace", e.stackTraceToString())
             put("message", e.message ?: "Unknown error")
         }
-        sendRequest("$baseURL/logs", JSONObject().put("data", JSONArray().put(log)), {}, {}, "POST", true)
+        sendRequest("$baseURL/logs", JSONObject().put("data", JSONArray().put(log)), {}, {}, true)
     }
 
     private fun sendRequest(
@@ -192,7 +192,6 @@ object URLynk {
         jsonPayload: JSONObject?,
         onSuccess: (JSONObject) -> Unit,
         onFailure: (String?) -> Unit = {},
-        method: String = "POST",
         fromLogs: Boolean = false,
     ) {
         val requestBuilder = Request.Builder()
@@ -200,9 +199,9 @@ object URLynk {
             .addHeader("x-api-key", apiKey ?: "")
             .addHeader("user-agent", userAgent ?: "")
 
-        if (method == "POST" && jsonPayload != null) {
+        if (jsonPayload != null) {
             requestBuilder.post(jsonPayload.toString().toRequestBody("application/json".toMediaType()))
-        } else if (method == "GET") {
+        } else {
             requestBuilder.get()
         }
 
@@ -246,7 +245,6 @@ object URLynk {
             screenHeight = windowMetrics.bounds.height()
             devicePixelRatio = context.resources.displayMetrics.densityDpi
         } else {
-            @Suppress("DEPRECATION")
             val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             @Suppress("DEPRECATION")
             wm.defaultDisplay.getRealMetrics(metrics)
@@ -254,6 +252,10 @@ object URLynk {
             screenHeight = metrics.heightPixels
             devicePixelRatio = metrics.densityDpi
         }
+    }
+
+    private fun emitLinkData(link: String, data: String) {
+        linkData.postValue(Pair(link, data))
     }
 
     @SuppressLint("HardwareIds")
