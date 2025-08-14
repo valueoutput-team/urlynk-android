@@ -129,7 +129,7 @@ URLynk.createShortLink(LinkModel(
 }
 ```
 
-> **Note:** Check out a complete example [here](./app/src/main/java/com/valueoutput/urlynk_demo/MainActivity.kt).
+> **Note:** Check out a complete example [here](https://github.com/valueoutput-team/urlynk-android/blob/main/app/src/main/java/com/valueoutput/urlynk_demo/MainActivity.kt).
 
 ## Development Testing
 
