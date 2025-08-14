@@ -166,19 +166,20 @@ If successful:
 ### Deep Link [Play Store Testing]
 
 1. **Publish** a test build to the Play Console testing track like Internal Testing.
-2. **Update** release SHA-256 certificate fingerprint in your URLynk dashboard.
+2. **Add** release SHA-256 certificate fingerprint in your URLynk dashboard (app settings).
 3. **Install** the app via the Play Store testing link on your device.
 4. **Open** a generated deep link in the browser — the app should now launch directly.
 
 ### Deferred Link [Play Store Testing]
 
 1. **Publish** a test build to the Play Console testing track like Internal Testing.
-2. **Share and accept** the tester opt-in link on the device/account you plan to test with.
-3. **Ensure** app is not installed in this device.
-4. **Open** a generated deep link in the browser - it should redirect to your Play Store listing for the test build. 
-5. **Install** the test build from the Play Store.
-6. **Open** the app after installation.
-7. **Observe** `URLynk.onLinkData` should receive the payload attached to the original link within a few seconds (depending on network stability).
+2. **Add** release SHA-256 certificate fingerprint in your URLynk dashboard (app settings).
+3. **Share and accept** the tester opt-in link on the device/account you plan to test with.
+4. **Ensure** app is not installed in this device.
+5. **Open** a generated deep link in the browser - it should redirect to your Play Store listing for the test build. 
+6. **Install** the test build from the Play Store.
+7. **Open** the app after installation.
+8. **Observe** `URLynk.onLinkData` should receive the payload attached to the original link within a few seconds (depending on network stability).
 
 > ## Important
 >
