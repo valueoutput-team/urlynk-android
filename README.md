@@ -40,7 +40,7 @@ A lightweight Android library for URL shortening and deep links - open the app d
 >    implementation("com.github.valueoutput-team:urlynk-android:1.0.2")
 >
 >    // New [Add this]:
->    implementation("com.valueoutput:urlynk:1.2.1")
+>    implementation("com.valueoutput:urlynk:1.2.2")
 >    ```
 >
 > **Maven Central coordinates:**  
@@ -51,7 +51,7 @@ A lightweight Android library for URL shortening and deep links - open the app d
 ```kotlin
 dependencies {
     // Add this dependency
-    implementation("com.valueoutput:urlynk:1.2.1")
+    implementation("com.valueoutput:urlynk:1.2.2")
 }
 ```
 
@@ -96,14 +96,18 @@ Add the following `intent-filter` inside **.MainActivity** `<activity>` tag.
 URLynk.handleDeepLink(intent)
 
 // Then configure with your credentials
-URLynk.configure(this, appId = "YOUR_APP_ID", apiKey = "YOUR_API_KEY")
+URLynk.configure(this, apiKey = "YOUR_API_KEY")
 ```
 
 ### 2. Observe link data
 
 ```kotlin
-URLynk.onLinkData.observe(this) { data ->
-    Log.d("[URLynk]", "Received deep link: \"${data.first}\" with data: \"${data.second}\"")
+URLynk.onLinkData.observe(this) { res ->
+    if(res.error != null) {
+        Log.e("[URLynk]", "Error: ${res.error}")
+    } else {
+        Log.d("[URLynk]", "Received Data: [${res.link}] ${res.data}")
+    }
 }
 ```
 
@@ -122,7 +126,7 @@ URLynk.createDeepLink("any data in string format") { res ->
 
 ```kotlin
 URLynk.createShortLink(LinkModel(
-    url = "https://www.google.com/search?q=urlynk&sca_esv=609c72437aa85e53&sxsrf=AE3TifPffGhN1WGe74VkK0U1vDQRC9ff9A%3A1754933677002",
+    url = "https://www.google.com/search?q=urlynk&sca_esv=609c72437aa85e53",
 )) { res ->
     res.onSuccess { link -> Log.d("[URLynk]", "Generated Short Link: $link") }
     res.onFailure { e -> Log.e("[URLynk]", e.message ?: "Short Link error") }
@@ -131,9 +135,9 @@ URLynk.createShortLink(LinkModel(
 
 > **Note:** Check out a complete example [here](https://github.com/valueoutput-team/urlynk-android/blob/main/app/src/main/java/com/valueoutput/urlynk_demo/MainActivity.kt).
 
-## Development Testing
+## Testing
 
-### Deep Link [Development Testing]
+### Deep Link Testing
 
 1. **Run** the app on an emulator or physical device.
 2. **Generate** a deep link from the app.
@@ -146,40 +150,28 @@ adb shell am start -a android.intent.action.VIEW -d "GENERATED_DEEP_LINK" YOUR_A
 If successful:
 
 - The app should launch (if it was in the background).
-- **URLynk.onLinkData** should receive the payload within a few seconds (depending on network stability).
+- `onLinkData` should receive the payload within a few seconds (depending on network stability).
 
-### Deferred Link [Development Testing]
+### Deferred Link Testing
 
-1. **Implement** a toast message or UI element to display the data received by **URLynk.onLinkData**.
-2. **Install** the app on a **real** Android device (not reliable on emulators).
-3. **Generate** a deep link from the app.
-4. **Unistall** the app from the device.
-5. **Open** the generated link in a browser on the same or another Android device.
-6. **Ignore** the redirect and manually install the app on the device where the link was opened in step 5.
-   > This serves as a development substitute for a Play Store installation.
-7. **Open** the app — **URLynk.onLinkData** should receive the payload within a few seconds (depending on network stability) and display it according to your setup (toast or UI output).
+1. **Run** the app on a simulator or physical device.
+2. **Generate** a deep link from the app.
+3. **Open** the generated link in the device’s browser while the app is running.
+4. **Ignore** the redirect - in production, app will launch if installed, else users will be redirected to the Play Store; in development, this won’t work.
+5. **Restart** the app — `onLinkData` should receive the payload within a few seconds (depending on network stability).
 
-> **NOTE:** For direct app openings from browsers, the app must be published on the Play Store or installed via a Play Store testing track.
+> **NOTE:** For direct app opening from browser, the app must be published on the Play Store or installed via a Play Store testing track.
 
-## Play Store Testing
-
-### Deep Link [Play Store Testing]
-
-1. **Publish** a test build to the Play Console testing track like Internal Testing.
-2. **Add** release SHA-256 certificate fingerprint in your URLynk dashboard (app settings).
-3. **Install** the app via the Play Store testing link on your device.
-4. **Open** a generated deep link in the browser — the app should now launch directly.
-
-### Deferred Link [Play Store Testing]
+### Play Store Testing
 
 1. **Publish** a test build to the Play Console testing track like Internal Testing.
 2. **Add** release SHA-256 certificate fingerprint in your URLynk dashboard (app settings).
 3. **Share and accept** the tester opt-in link on the device/account you plan to test with.
 4. **Ensure** app is not installed in this device.
-5. **Open** a generated deep link in the browser - it should redirect to your Play Store listing for the test build. 
+5. **Open** a generated deep link in the browser - it should redirect to your Play Store listing for the test build.
 6. **Install** the test build from the Play Store.
-7. **Open** the app after installation.
-8. **Observe** `URLynk.onLinkData` should receive the payload attached to the original link within a few seconds (depending on network stability).
+7. **Open** the app after installation - `onLinkData` should receive the payload attached to the original link within a few seconds (depending on network stability).
+8. **Open** another generated deep link in the browser — the app should now launch directly.
 
 > ## Important
 >

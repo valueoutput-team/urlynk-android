@@ -37,7 +37,7 @@ data class LinkModel(
     /** List of expiry conditions for the link (click-based or time-based). */
     val expiry: List<ExpiryModel>? = null,
 
-    /** Restrictions applied to the link, such as OS/device limitations, location rules, etc. */
+    /** Restrictions applied to the link based on OS, device, time, or location. */
     val restrictions: RestrictionModel? = null,
 
     /** Smart routing rules that redirect based on OS, device, time, or location. */

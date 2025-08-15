@@ -1,7 +1,6 @@
 package com.valueoutput.urlynk
 
 import okhttp3.Call
-import java.util.Date
 import android.net.Uri
 import okhttp3.Request
 import okhttp3.Callback
@@ -23,22 +22,27 @@ import androidx.lifecycle.MutableLiveData
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 
+data class LinkData(
+    val link: String? = null,
+    val data: String? = null,
+    val error: String? = null
+)
+
 object URLynk {
     private var screenWidth: Int? = null
     private var screenHeight: Int? = null
     private var userAgent: String? = null
     private var initialLink: String? = null
     private var devicePixelRatio: Int? = null
-    @Volatile private var appId: String? = null
     @Volatile private var apiKey: String? = null
     private var baseURL = "https://api-xn4bb66p3a-uc.a.run.app/v4"
 
-    private const val VERSION = "1.2.1"
+    private const val VERSION = "1.2.2"
     private const val CONFIG_ERR = "Service not configured. Call configure() before using this method."
 
     private val client = OkHttpClient()
-    private val linkData = MutableLiveData<Pair<String, String>>()
-    val onLinkData: LiveData<Pair<String, String>> = linkData
+    private val linkData = MutableLiveData<LinkData>()
+    val onLinkData: LiveData<LinkData> = linkData
 
     /** -----------------------
      *  Public Methods
@@ -59,14 +63,12 @@ object URLynk {
     }
 
     /**
-     * Configure the URLynk service with appId and apiKey.
+     * Configure the URLynk service with your API KEY.
      * @param context Application context
-     * @param appId Your app ID from URLynk
      * @param apiKey Your API key from URLynk
      */
-    fun configure(context: Context, appId: String, apiKey: String) {
+    fun configure(context: Context, apiKey: String) {
         synchronized(this) {
-            this.appId = appId
             this.apiKey = apiKey
         }
         userAgent = "Android; ${context.packageName}; ${getHashedDeviceId(context)}; $VERSION"
@@ -88,7 +90,7 @@ object URLynk {
      * @param onRes Callback that receives the shortened URL result
      */
     fun createShortLink(data: LinkModel, onRes: (Result<String>) -> Unit) {
-        if (appId == null || apiKey == null) return onRes(Result.failure(IllegalStateException(CONFIG_ERR)))
+        if (apiKey == null) return onRes(Result.failure(IllegalStateException(CONFIG_ERR)))
 
         val err = data.validate()
         if(err != null) return onRes(Result.failure(IllegalArgumentException(err)))
@@ -112,11 +114,11 @@ object URLynk {
      * @param onRes Callback that receives the resulting deep link
      */
     fun createDeepLink(data: String, onRes: (Result<String>) -> Unit) {
-        if (appId == null || apiKey == null) return onRes(Result.failure(IllegalStateException(CONFIG_ERR)))
+        if (apiKey == null) return onRes(Result.failure(IllegalStateException(CONFIG_ERR)))
         if (data.isBlank()) return onRes(Result.failure(IllegalArgumentException("Data must not be empty")))
 
         val payload = JSONObject().apply {
-            put("appId", appId)
+            put("appId", "")
             put("data", data.trim())
         }
 
@@ -131,16 +133,15 @@ object URLynk {
     }
 
     /**
-     * Looks up for any recent deep link click associated with this device within the last 24 hours.
+     * Look for any recent deep link click from this device within the last 24 hours.
      * Auto-invoked if a deferred link is detected. Can also be called manually.
      * If a matching click is found, its associated link & data will be posted to [onLinkData].
      * The service must be initialized by calling [configure] before using this method.
      */
     fun searchClick() {
-        if (appId == null || apiKey == null) throw IllegalStateException(CONFIG_ERR)
+        if (apiKey == null) throw IllegalStateException(CONFIG_ERR)
 
         val payload = JSONObject().apply {
-            put("appId", appId)
             put("screenWidth", screenWidth)
             put("screenHeight", screenHeight)
             put("devicePixelRatio", devicePixelRatio)
@@ -148,7 +149,7 @@ object URLynk {
 
         sendRequest("$baseURL/clicks/find", payload, onSuccess = { data ->
             emitLinkData(data.getString("link"), data.getString("data"))
-        })
+        }, onFailure = { err -> emitLinkData(error = err) })
     }
 
     /** -----------------------
@@ -163,7 +164,7 @@ object URLynk {
     }
 
     private fun getLinkData(link: String) {
-        if (appId == null || apiKey == null) {
+        if (apiKey == null) {
             initialLink = link
             return
         }
@@ -174,13 +175,13 @@ object URLynk {
             val d = data.getString("linkData")
             emitLinkData(link, d)
             initialLink = null
-        })
+        }, onFailure = { err -> emitLinkData(error = err) })
     }
 
     private fun logError(e: Exception) {
         val log = JSONObject().apply {
             put("level", 1)
-            put("time", Date().time)
+            put("time", System.currentTimeMillis())
             put("stackTrace", e.stackTraceToString())
             put("message", e.message ?: "Unknown error")
         }
@@ -254,8 +255,8 @@ object URLynk {
         }
     }
 
-    private fun emitLinkData(link: String, data: String) {
-        linkData.postValue(Pair(link, data))
+    private fun emitLinkData(link: String? = null, data: String? = null, error: String? = null) {
+        linkData.postValue(LinkData(link, data, error))
     }
 
     @SuppressLint("HardwareIds")

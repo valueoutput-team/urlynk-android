@@ -23,11 +23,15 @@ class MainActivity : ComponentActivity() {
         URLynk.handleDeepLink(intent)
 
         // 2. Configure URLynk service
-        URLynk.configure(this, "YOUR_APP_ID", "YOUR_API_KEY")
+        URLynk.configure(this, "YOUR_API_KEY")
 
         // 3. Listen for link data
-        URLynk.onLinkData.observe(this) { data ->
-            Log.d("[URLynk]", "Received deep link: \"${data.first}\" with data: \"${data.second}\"")
+        URLynk.onLinkData.observe(this) { res ->
+            if(res.error != null) {
+                Log.e("[URLynk]", "Error: ${res.error}")
+            } else {
+                Log.d("[URLynk]", "Received Data: [${res.link}] ${res.data}")
+            }
         }
 
         enableEdgeToEdge()
