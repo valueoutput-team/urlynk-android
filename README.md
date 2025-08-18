@@ -6,7 +6,7 @@ A lightweight Android library for URL shortening and deep links - open the app d
 
 1. Visit [URLynk](https://app.urlynk.in)
 2. Create a free account
-3. Register your app and receive your **App ID**
+3. Register your app and receive unique **App ID**
 4. Generate your **API Key**
 
 ## Features
@@ -154,7 +154,7 @@ If successful:
 
 ### Deferred Link Testing
 
-1. **Run** the app on a simulator or physical device.
+1. **Run** the app on a physical device (not reliable on emulator).
 2. **Generate** a deep link from the app.
 3. **Open** the generated link in the device’s browser while the app is running.
 4. **Ignore** the redirect - in production, app will launch if installed, else users will be redirected to the Play Store; in development, this won’t work.
@@ -165,15 +165,23 @@ If successful:
 ### Play Store Testing
 
 1. **Publish** a test build to the Play Console testing track like Internal Testing.
-2. **Add** release SHA-256 certificate fingerprint in your URLynk dashboard (app settings).
-3. **Share and accept** the tester opt-in link on the device/account you plan to test with.
-4. **Ensure** app is not installed in this device.
-5. **Open** a generated deep link in the browser - it should redirect to your Play Store listing for the test build.
-6. **Install** the test build from the Play Store.
-7. **Open** the app after installation - `onLinkData` should receive the payload attached to the original link within a few seconds (depending on network stability).
-8. **Open** another generated deep link in the browser — the app should now launch directly.
+2. **Add** App Signing key certificate (SHA-256 fingerprint) in the URLynk app settings. <br>
+   `Path: Play Console → Test and release → App Integrity → Play app signing → Settings`
+3. **Wait** at least 5 minutes to allow the Digital Asset Links JSON to propagate.
+4. **Verify** deep link setup in Play Console: `Grow users → Deep links` <br>
+   You should see the status **All links working** and your `intent-filter` data listed under App configuration web links.
+5. **Share and accept** the tester opt-in link on the device/account you plan to test with.
+6. **Uninstall** any existing build of the app from this device.
+7. **Open** a generated deep link in the browser - it should redirect to your Play Store listing for the test build.
+8. **Install** the test build from the Play Store.
+9. **Open** the app after installation - `onLinkData` should receive the payload attached to the original link within a few seconds (depending on network stability).
+10. **Copy** your deep link into a text editor on your device, then tap it directly. This should open the app directly.
 
-> ## Important
->
-> After publishing your app to the Play Store, add the release SHA-256 certificate fingerprint from the Play Console to your URLynk app settings.
-> This is essential for enabling direct app openings via deep links.
+> **NOTE:** When testing from the Play Store’s testing track, deep links may sometimes redirect to the Play Store page instead of opening the installed app. <br>
+> Use text editor method (step 10) for development. <br>
+> _(Rest assured, once your app is live, links will also open directly from the browser.)_
+
+## Important
+
+After publishing your app to the Play Store, add the **App Signing key certificate (SHA-256 fingerprint)** from Play Console to your URLynk app settings.
+This is essential for enabling direct app openings via deep links.
