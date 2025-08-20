@@ -98,7 +98,7 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 //                    ),
 //                    restrictions = RestrictionModel(
 //                        clicksPerDevice = 5,
-//                        workingHrs = listOf(Pair(0, 12), Pair(12, 23)),
+//                        workingHrs = listOf(WorkingHrModel(0, 12), WorkingHrModel(12, 23)),
 //                        os = listOf(OSType.ANDROID, OSType.IOS, OSType.MACOS),
 //                        devices = listOf(DeviceType.MOBILE, DeviceType.DESKTOP),
 //                        inclLoc = listOf(LocModel("India", listOf(6.5531169, 35.6745457, 67.9544415, 97.395561))),
@@ -108,7 +108,7 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 //                        osBased = listOf(RoutingModel(url="https://os.com", targets = listOf(OSType.ANDROID, OSType.IOS))),
 //                        deviceBased = listOf(RoutingModel(url="https://device.com", targets = listOf(DeviceType.MOBILE))),
 //                        locBased = listOf(RoutingModel(url="https://loc.com", targets = listOf(LocModel("India", listOf(6.5531169, 35.6745457, 67.9544415, 97.395561))))),
-//                        timeBased = listOf(RoutingModel(url="https://time.com", targets = listOf(Pair(0, 12)))),
+//                        timeBased = listOf(RoutingModel(url="https://time.com", targets = listOf(WorkingHrModel(0, 12)))),
 //                    )
                 )) { res ->
                     res.onSuccess { link -> Log.d("[URLynk]", "Generated Short Link: $link") }

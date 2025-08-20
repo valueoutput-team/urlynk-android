@@ -18,8 +18,10 @@ import java.security.MessageDigest
 import androidx.lifecycle.LiveData
 import android.util.DisplayMetrics
 import android.annotation.SuppressLint
+import android.content.SharedPreferences
 import androidx.lifecycle.MutableLiveData
 import okhttp3.MediaType.Companion.toMediaType
+import androidx.core.content.pm.PackageInfoCompat
 import okhttp3.RequestBody.Companion.toRequestBody
 
 data class LinkData(
@@ -33,11 +35,15 @@ object URLynk {
     private var screenHeight: Int? = null
     private var userAgent: String? = null
     private var initialLink: String? = null
+    private var maxClickSearch: Int? = null
     private var devicePixelRatio: Int? = null
     @Volatile private var apiKey: String? = null
     private var baseURL = "https://api-xn4bb66p3a-uc.a.run.app/v4"
 
-    private const val VERSION = "1.2.2"
+    private const val VERSION = "1.3.0"
+    private const val PREF_NAME = "urlynk_pref"
+    private const val VERSION_KEY = "last_app_version"
+    private const val COUNT_KEY = "click_search_count"
     private const val CONFIG_ERR = "Service not configured. Call configure() before using this method."
 
     private val client = OkHttpClient()
@@ -72,9 +78,8 @@ object URLynk {
             this.apiKey = apiKey
         }
         userAgent = "Android; ${context.packageName}; ${getHashedDeviceId(context)}; $VERSION"
-        setScreenMetrics(context)
         fetchBaseURL {
-            initialLink?.let { getLinkData(it) } ?: searchClick()
+            initialLink?.let { getLinkData(it) } ?: searchClick(context)
         }
     }
 
@@ -97,12 +102,17 @@ object URLynk {
 
         val payload = JSONObject(data.toJson())
 
-        sendRequest("$baseURL/links", payload, onSuccess = { d ->
-            val urlOb = d.getJSONObject("link").getJSONObject("url")
-            val shortUrl = urlOb.optString("custom").takeIf { it.isNotBlank() && it != "null" }
-                ?: urlOb.optString("default")
-            onRes(Result.success(shortUrl))
-        }, onFailure = {msg -> onRes(Result.failure(Exception(msg))) })
+        sendRequest(
+            "$baseURL/links",
+            payload,
+            onSuccess = { d ->
+                val urlOb = d.getJSONObject("link").getJSONObject("url")
+                val shortUrl = urlOb.optString("custom").takeIf { it.isNotBlank() && it != "null" }
+                    ?: urlOb.optString("default")
+                onRes(Result.success(shortUrl))
+            },
+            onFailure = { msg, _ -> onRes(Result.failure(Exception(msg))) }
+        )
     }
 
     /**
@@ -115,41 +125,24 @@ object URLynk {
      */
     fun createDeepLink(data: String, onRes: (Result<String>) -> Unit) {
         if (apiKey == null) return onRes(Result.failure(IllegalStateException(CONFIG_ERR)))
-        if (data.isBlank()) return onRes(Result.failure(IllegalArgumentException("Data must not be empty")))
+        if (data.isBlank()) return onRes(Result.failure(IllegalArgumentException("Data cannot not be empty")))
 
         val payload = JSONObject().apply {
             put("appId", "")
             put("data", data.trim())
         }
 
-        sendRequest("$baseURL/links", payload, onSuccess = { d ->
-            val urlOb = d.getJSONObject("link").getJSONObject("url")
-            val link = urlOb.optString("custom").takeIf { it.isNotBlank() && it != "null" }
-                ?: urlOb.optString("default")
-            onRes(Result.success(link))
-        }, onFailure = { err ->
-            onRes(Result.failure(Exception(err)))
-        })
-    }
-
-    /**
-     * Look for any recent deep link click from this device within the last 24 hours.
-     * Auto-invoked if a deferred link is detected. Can also be called manually.
-     * If a matching click is found, its associated link & data will be posted to [onLinkData].
-     * The service must be initialized by calling [configure] before using this method.
-     */
-    fun searchClick() {
-        if (apiKey == null) throw IllegalStateException(CONFIG_ERR)
-
-        val payload = JSONObject().apply {
-            put("screenWidth", screenWidth)
-            put("screenHeight", screenHeight)
-            put("devicePixelRatio", devicePixelRatio)
-        }
-
-        sendRequest("$baseURL/clicks/find", payload, onSuccess = { data ->
-            emitLinkData(data.getString("link"), data.getString("data"))
-        }, onFailure = { err -> emitLinkData(error = err) })
+        sendRequest(
+            "$baseURL/links",
+            payload,
+            onSuccess = { d ->
+                val urlOb = d.getJSONObject("link").getJSONObject("url")
+                val link = urlOb.optString("custom").takeIf { it.isNotBlank() && it != "null" }
+                    ?: urlOb.optString("default")
+                onRes(Result.success(link))
+            },
+            onFailure = { err, _ -> onRes(Result.failure(Exception(err))) }
+        )
     }
 
     /** -----------------------
@@ -157,10 +150,16 @@ object URLynk {
      *  ----------------------- */
 
     private fun fetchBaseURL(onComplete: () -> Unit) {
-        sendRequest("$baseURL/urls", null, onSuccess = { data ->
-            baseURL = data.optString("baseURL", baseURL)
-            onComplete()
-        }, onFailure = { onComplete() })
+        sendRequest(
+            "$baseURL/urls",
+            null,
+            onSuccess = { data ->
+                baseURL = data.optString("baseURL", baseURL)
+                maxClickSearch = data.optInt("maxClickSearch")
+                onComplete()
+            },
+            onFailure = { _, _ -> onComplete() }
+        )
     }
 
     private fun getLinkData(link: String) {
@@ -168,14 +167,55 @@ object URLynk {
             initialLink = link
             return
         }
+
         val params = runCatching { Uri.parse(link).pathSegments }.getOrNull()
         if (params?.size != 2) return
 
-        sendRequest("$baseURL/links/${params[0]}/${params[1]}", null, onSuccess = { data ->
-            val d = data.getString("linkData")
-            emitLinkData(link, d)
-            initialLink = null
-        }, onFailure = { err -> emitLinkData(error = err) })
+        sendRequest(
+            "$baseURL/links/${params[0]}/${params[1]}",
+            null,
+            onSuccess = { data ->
+                val d = data.getString("linkData")
+                emitLinkData(link, d)
+                initialLink = null
+            },
+            onFailure = { err, _ -> emitLinkData(error = err) }
+        )
+    }
+
+    private fun searchClick(context: Context) {
+        if (apiKey == null) throw IllegalStateException(CONFIG_ERR)
+
+        val prefs = getPrefs(context)
+        val isLive = fromStore(context)
+        val version = getVersionCode(context)
+        val count = prefs.getInt(COUNT_KEY, 0)
+        val lastVersion = prefs.getLong(VERSION_KEY, -1L)
+        val reset = version != lastVersion
+        if(isLive && !reset && maxClickSearch != null && count >= maxClickSearch!!) return
+
+        setScreenMetrics(context)
+        val payload = JSONObject().apply {
+            put("isLive", isLive)
+            put("versionCode", version)
+            put("screenWidth", screenWidth)
+            put("screenHeight", screenHeight)
+            put("devicePixelRatio", devicePixelRatio)
+            put("osVersion", Build.VERSION.RELEASE ?: "")
+        }
+
+        sendRequest(
+            "$baseURL/clicks/find",
+            payload,
+            onSuccess = { data ->
+                emitLinkData(data.getString("link"), data.getString("data"))
+                onSearched(prefs, version, if (reset) 1 else count + 1)
+            },
+            onFailure = { err, code ->
+                emitLinkData(error = err)
+                if(code == 404) onSearched(prefs, version, if (reset) 1 else count + 1)
+            }
+        )
     }
 
     private fun logError(e: Exception) {
@@ -185,14 +225,21 @@ object URLynk {
             put("stackTrace", e.stackTraceToString())
             put("message", e.message ?: "Unknown error")
         }
-        sendRequest("$baseURL/logs", JSONObject().put("data", JSONArray().put(log)), {}, {}, true)
+
+        sendRequest(
+            "$baseURL/logs",
+            JSONObject().put("data", JSONArray().put(log)),
+            {},
+            {_, _ ->},
+            true
+        )
     }
 
     private fun sendRequest(
         url: String,
         jsonPayload: JSONObject?,
         onSuccess: (JSONObject) -> Unit,
-        onFailure: (String?) -> Unit = {},
+        onFailure: (String?, Int?) -> Unit = { _, _ -> },
         fromLogs: Boolean = false,
     ) {
         val requestBuilder = Request.Builder()
@@ -200,30 +247,31 @@ object URLynk {
             .addHeader("x-api-key", apiKey ?: "")
             .addHeader("user-agent", userAgent ?: "")
 
-        if (jsonPayload != null) {
-            requestBuilder.post(jsonPayload.toString().toRequestBody("application/json".toMediaType()))
-        } else {
+        if (jsonPayload == null) {
             requestBuilder.get()
+        } else {
+            requestBuilder.post(jsonPayload.toString().toRequestBody("application/json".toMediaType()))
         }
 
         client.newCall(requestBuilder.build()).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 if(!fromLogs) logError(e)
-                onFailure(e.message)
+                onFailure(e.message, null)
             }
+
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     try {
                         val bodyStr = it.body?.string()
                         if(bodyStr.isNullOrEmpty()) {
-                            onFailure(null)
+                            onFailure(null, it.code)
                             return
                         }
 
                         val json = JSONObject(bodyStr)
                         if (!it.isSuccessful) {
                             val msg  = json.optString("message")
-                            onFailure(msg)
+                            onFailure(msg, it.code)
                             return
                         }
 
@@ -231,7 +279,7 @@ object URLynk {
                         onSuccess(ob)
                     } catch (e: Exception) {
                         if(!fromLogs) logError(e)
-                        onFailure(e.message)
+                        onFailure(e.message, it.code)
                     }
                 }
             }
@@ -268,5 +316,38 @@ object URLynk {
     private fun sha256(input: String): String {
         val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun getPrefs(context: Context): SharedPreferences {
+        return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+    }
+
+    private fun getVersionCode(context: Context): Long {
+        return try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            PackageInfoCompat.getLongVersionCode(pInfo)
+        } catch (e: Exception) {
+            logError(e)
+            -1L
+        }
+    }
+
+    private fun fromStore(context: Context): Boolean {
+        return try {
+            val pm = context.packageManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                pm.getInstallSourceInfo(context.packageName).installingPackageName == "com.android.vending"
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getInstallerPackageName(context.packageName) == "com.android.vending"
+            }
+        } catch (e: Exception) {
+            logError(e)
+            false
+        }
+    }
+
+    private fun onSearched(prefs: SharedPreferences, versionCode: Long, count: Int) {
+        prefs.edit().putLong(VERSION_KEY, versionCode).putInt(COUNT_KEY, count).apply()
     }
 }
