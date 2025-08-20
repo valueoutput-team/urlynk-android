@@ -40,7 +40,7 @@ object URLynk {
     @Volatile private var apiKey: String? = null
     private var baseURL = "https://api-xn4bb66p3a-uc.a.run.app/v4"
 
-    private const val VERSION = "1.3.0"
+    private const val VERSION = "1.3.1"
     private const val PREF_NAME = "urlynk_pref"
     private const val VERSION_KEY = "last_app_version"
     private const val COUNT_KEY = "click_search_count"
@@ -125,7 +125,7 @@ object URLynk {
      */
     fun createDeepLink(data: String, onRes: (Result<String>) -> Unit) {
         if (apiKey == null) return onRes(Result.failure(IllegalStateException(CONFIG_ERR)))
-        if (data.isBlank()) return onRes(Result.failure(IllegalArgumentException("Data cannot not be empty")))
+        if (data.isBlank()) return onRes(Result.failure(IllegalArgumentException("Data cannot be empty")))
 
         val payload = JSONObject().apply {
             put("appId", "")

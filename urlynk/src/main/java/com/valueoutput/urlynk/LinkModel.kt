@@ -2,14 +2,8 @@ package com.valueoutput.urlynk
 
 import java.util.*
 
-enum class ExpiryType { CLICK_BASED, TIME_BASED }
-
-enum class DeviceType { MOBILE, TABLET, DESKTOP }
-
-enum class OSType { ANDROID, IOS, MACOS, WINDOWS, LINUX }
-
 /**
- * Represents the core link configuration and its validation logic.
+ * Short Link Model
  */
 data class LinkModel(
     /**
@@ -19,10 +13,7 @@ data class LinkModel(
      */
     val id: String? = null,
 
-    /**
-     * The original URL that will be shortened.
-     * This is the only required parameter; all other parameters are optional.
-     */
+    /** The original URL to shorten (only required param). */
     val url: String,
 
     /** Custom domain for the link. Must be verified on URLynk. */
@@ -81,14 +72,14 @@ data class LinkModel(
         expiry?.let {
             if(it.isEmpty()) return "Expiry cannot be empty"
             if(it.hasDuplicates) return "Expiry contains duplicates"
-            for(e in expiry){
+            for (e in expiry) {
                 val err = e.validate()
-                if(err != null) return err
+                if (err != null) return err
             }
         }
 
         val err = restrictions?.validate()
-        if(err != null) return err
+        if (err != null) return err
 
         return smartRouting?.validate()
     }
@@ -109,7 +100,7 @@ data class ExpiryModel(
     val value: Long
 ) {
     override fun hashCode(): Int {
-       return type.hashCode()
+        return type.hashCode()
     }
 
     override fun equals(other: Any?): Boolean {
@@ -161,7 +152,7 @@ data class RestrictionModel(
     /** Maximum number of clicks per device. Null means unlimited. */
     val clicksPerDevice: Int? = null,
 
-    /** Whitelisted locations. Null means no worldwide access. */
+    /** Whitelisted locations. Null means worldwide access. */
     val inclLoc: List<LocModel>? = null,
 
     /** Blacklisted locations. Null means no blacklist. */
@@ -170,7 +161,7 @@ data class RestrictionModel(
     /** Allowed device types. Null means no device restriction. */
     val devices: List<DeviceType>? = null,
 
-    /** Allowed working hours. Null means 24 hours access. */
+    /** Allowed hours. Null means 24 hours access. */
     val workingHrs: List<WorkingHrModel>? = null
 ) {
     fun toJson(): Map<String, Any> {
@@ -202,27 +193,27 @@ data class RestrictionModel(
         if (workingHrs != null) {
             if (workingHrs.isEmpty()) return "Restrictions workingHrs cannot be empty"
             if (workingHrs.hasDuplicates) return "Restrictions workingHrs contain duplicates"
-            for(e in workingHrs){
+            for (e in workingHrs) {
                 val err = e.validate()
-                if(err != null) return "$err: restrictions workingHrs"
+                if (err != null) return "$err: restrictions workingHrs"
             }
         }
 
         if (inclLoc != null) {
             if (inclLoc.isEmpty()) return "Restrictions inclLoc cannot be empty"
             if (inclLoc.hasDuplicates) return "Restrictions inclLoc contain duplicates"
-            for(e in inclLoc){
+            for (e in inclLoc){
                 val err = e.validate()
-                if(err != null) return "$err: restrictions inclLoc"
+                if (err != null) return "$err: restrictions inclLoc"
             }
         }
 
         if (exclLoc != null) {
             if (exclLoc.isEmpty()) return "Restrictions exclLoc cannot be empty"
             if (exclLoc.hasDuplicates) return "Restrictions exclLoc contain duplicates"
-            for(e in exclLoc){
+            for (e in exclLoc){
                 val err = e.validate()
-                if(err != null) return "$err: restrictions exclLoc"
+                if (err != null) return "$err: restrictions exclLoc"
             }
         }
 
@@ -237,7 +228,7 @@ data class RestrictionModel(
  * 1. Time-based routing
  * 2. Location-based routing
  * 3. Device-based routing
- * 4. OS-based routing <br>
+ * 4. OS-based routing
  *
  * **Note:** Restrictions are always evaluated first. If a user is blocked by any restriction,
  * smart routing rules will not be applied.
@@ -265,31 +256,31 @@ data class SmartRoutingModel(
     }
 
     fun validate(): String? {
-        if(osBased != null){
-            for(e in osBased){
+        if (osBased != null){
+            for (e in osBased){
                 val err = e.validate { _ -> null }
-                if(err != null) return "$err: osBased smartRouting"
+                if (err != null) return "$err: osBased smartRouting"
             }
         }
 
-        if(deviceBased != null){
-            for(e in deviceBased){
+        if (deviceBased != null){
+            for (e in deviceBased){
                 val err = e.validate { _ -> null }
-                if(err != null) return "$err: deviceBased smartRouting"
+                if (err != null) return "$err: deviceBased smartRouting"
             }
         }
 
-        if(timeBased != null){
-            for(e in timeBased){
+        if (timeBased != null){
+            for (e in timeBased){
                 val err = e.validate { t -> t.validate() }
-                if(err != null) return "$err: timeBased smartRouting"
+                if (err != null) return "$err: timeBased smartRouting"
             }
         }
 
-        if(locBased != null){
-            for(e in locBased){
+        if (locBased != null){
+            for (e in locBased){
                 val err = e.validate { t -> t.validate() }
-                if(err != null) return "$err: locBased smartRouting"
+                if (err != null) return "$err: locBased smartRouting"
             }
         }
 
@@ -402,7 +393,7 @@ data class RoutingModel<T>(
         if (targets.hasDuplicates) return "Targets contain duplicates"
         for (target in targets) {
             val err = targetValidator(target)
-            if(err != null) return err
+            if (err != null) return err
         }
 
         return null

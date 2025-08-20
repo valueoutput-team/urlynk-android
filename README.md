@@ -40,7 +40,7 @@ A lightweight Android library for URL shortening and deep links - open the app d
 >    implementation("com.github.valueoutput-team:urlynk-android:1.0.2")
 >
 >    // New [Add this]:
->    implementation("com.valueoutput:urlynk:1.3.0")
+>    implementation("com.valueoutput:urlynk:1.3.1")
 >    ```
 >
 > **Maven Central coordinates:**  
@@ -51,7 +51,7 @@ A lightweight Android library for URL shortening and deep links - open the app d
 ```kotlin
 dependencies {
     // Add this dependency
-    implementation("com.valueoutput:urlynk:1.3.0")
+    implementation("com.valueoutput:urlynk:1.3.1")
 }
 ```
 
@@ -168,7 +168,7 @@ If successful:
 
 1. **Publish** a test build to the Play Console testing track like Internal Testing.
 2. **Add** App Signing key certificate (SHA-256 fingerprint) in the URLynk app settings. <br>
-   `Path: Play Console → Test and release → App Integrity → Play app signing → Settings → App Signing key certificate (SHA-256 fingerprint)`
+   `Path: Play Console → Test and release → App Integrity → Play app signing → Settings → App Signing key certificate → SHA-256 fingerprint`
 3. **Wait** at least 5 minutes to allow the Digital Asset Links JSON to propagate.
 4. **Verify** deep link setup in Play Console: `Grow users → Deep links` <br>
    You should see the status **All links working** and your `intent-filter` data listed under App configuration web links.
